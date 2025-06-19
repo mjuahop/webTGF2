@@ -9,7 +9,7 @@ services:
         value: 10000
     plan: free
     autoDeploy: true
-    rootDir: backend
+    rootDir:
 
   - type: static
     name: clasificador-frontend
