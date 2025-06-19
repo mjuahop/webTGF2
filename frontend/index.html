@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clasificador Médico</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+      margin: 0;
+      padding: 40px;
+      text-align: center;
+      color: #fff;
+    }
+    h1 {
+      font-size: 2.8rem;
+      margin-bottom: 10px;
+    }
+    img.logo {
+      height: 60px;
+      margin-bottom: 15px;
+    }
+    textarea {
+      width: 80%;
+      height: 120px;
+      font-size: 18px;
+      padding: 15px;
+      border-radius: 8px;
+      border: none;
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
+      resize: none;
+    }
+    button {
+      padding: 12px 30px;
+      font-size: 16px;
+      background: linear-gradient(90deg, #00c6ff, #0072ff);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 15px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      transition: 0.3s;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    a {
+      display: inline-block;
+      margin-top: 20px;
+      font-size: 16px;
+      text-decoration: none;
+      color: #a6e1ff;
+    }
+    #resultado, #historial {
+      margin-top: 40px;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: left;
+    }
+    .barra {
+      position: relative;
+      background: #4ea9ff;
+      height: 45px;
+      margin: 10px 0;
+      border-radius: 8px;
+    }
+    .barra span {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
+      color: #fff;
+    }
+    th, td {
+      padding: 12px;
+      text-align: center;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    th {
+      background-color: rgba(255,255,255,0.1);
+      font-weight: 600;
+    }
+    tr:hover {
+      background-color: rgba(255,255,255,0.1);
+    }
+    #chartContainer {
+      margin-top: 50px;
+      background: rgba(255,255,255,0.05);
+      padding: 20px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <img src="https://www.gva.es/documents/10180/402793/Llibre_Marca_Sanitat_2020_CAST_color.png" alt="GVA Salut" class="logo">
+  <h1>Clasificador de Procedimientos Médicos</h1>
+
+  <textarea id="texto" placeholder="Escribe aquí un texto clínico..."></textarea><br>
+  <button onclick="clasificar()">Clasificar</button><br>
+  <a href="https://webtfg.onrender.com/descargar" target="_blank">Descargar histórico de predicciones (CSV)</a>
+
+  <div id="resultado"></div>
+  <div id="historial"></div>
+  <div id="chartContainer">
+    <h3>Distribución acumulada por clase</h3>
+    <canvas id="pieChart" width="400" height="400"></canvas>
+  </div>
+
+  <script>
+    const claseCounts = {};
+    let pieChart;
+
+    async function clasificar() {
+      const texto = document.getElementById("texto").value;
+      const res = await fetch("https://webtfg.onrender.com/predict", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ text: texto })
+      });
+
+      const data = await res.json();
+      const contenedor = document.getElementById("resultado");
+      contenedor.innerHTML = "<h3>Predicciones:</h3>";
+
+      data.predicciones.forEach(p => {
+        contenedor.innerHTML += `
+          <div class="barra" style="width:${p.prob}%">
+            <span>${p.clase} (${p.prob}%)</span>
+          </div>
+        `;
+        // Contabilizar la clase principal (sólo la 1ª por simplicidad)
+        if (!claseCounts[p.clase]) claseCounts[p.clase] = 0;
+        claseCounts[p.clase] += 1;
+      });
+
+      actualizarGrafico();
+      mostrarHistorial();
+    }
+
+    function actualizarGrafico() {
+      const ctx = document.getElementById('pieChart').getContext('2d');
+      const labels = Object.keys(claseCounts);
+      const data = Object.values(claseCounts);
+      const colores = labels.map(() => '#' + Math.floor(Math.random()*16777215).toString(16));
+
+      if (pieChart) pieChart.destroy();
+      pieChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels,
+          datasets: [{
+            data,
+            backgroundColor: colores
+          }]
+        },
+        options: {
+          plugins: {
+            legend: {
+              labels: {
+                color: '#fff'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    async function mostrarHistorial() {
+      const res = await fetch("https://webtfg.onrender.com/historial");
+      const data = await res.json();
+
+      const contenedor = document.getElementById("historial");
+      contenedor.innerHTML = "<h3>Historial de consultas:</h3>";
+
+      if (data.length === 0) {
+        contenedor.innerHTML += "<p>No hay registros todavía.</p>";
+        return;
+      }
+
+      let tabla = `<table><tr>
+        <th>Texto</th>
+        <th>Clase 1</th><th>Prob 1</th>
+        <th>Clase 2</th><th>Prob 2</th>
+        <th>Clase 3</th><th>Prob 3</th>
+      </tr>`;
+
+      data.slice(-5).reverse().forEach(fila => {
+        tabla += `<tr>
+          <td>${fila.texto}</td>
+          <td>${fila.clase_1}</td><td>${fila.prob_1}%</td>
+          <td>${fila.clase_2}</td><td>${fila.prob_2}%</td>
+          <td>${fila.clase_3}</td><td>${fila.prob_3}%</td>
+        </tr>`;
+      });
+      tabla += "</table>";
+      contenedor.innerHTML += tabla;
+    }
+
+    mostrarHistorial();
+  </script>
+</body>
+</html>
