@@ -12,7 +12,8 @@ CORS(app)
 
 # Ruta del modelo
 MODEL_PATH = "modelo_entrenadomedico3"
-tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
+tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH, use_fast=False)
+
 model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH)
 
 # Mapeo del índice → clase real (sin clase 2)
