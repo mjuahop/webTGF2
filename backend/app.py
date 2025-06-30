@@ -2,32 +2,31 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import pandas as pd
 import torch
-import re
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from datetime import datetime
 import os
+import re
+from datetime import datetime
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 app = Flask(__name__)
 CORS(app)
 
-# Ruta del modelo
-MODEL_PATH = "modelo_entrenadomedico3"
-tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH, use_fast=False)
-
+# Cargar modelo desde Hugging Face
+MODEL_PATH = "martinjuanes/medicoTFGGVA"
+tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
 model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH)
 
-# Mapeo del índice → clase real (sin clase 2)
+# Mapeo de clases del 0 al 12 → reales (sin la clase 2)
 id2label = {
     0: 1, 1: 3, 2: 4, 3: 5, 4: 6, 5: 7, 6: 8,
-    7: 9, 8: 10, 9: 11, 10: 12, 11: 13, 12: 14,
+    7: 9, 8: 10, 9: 11, 10: 12, 11: 13, 12: 14
 }
 
 CSV_PATH = "registro_web.csv"
 
 def normalizar_texto(texto):
-    texto = texto.upper()
-    texto = re.sub(r"[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\\s]", " ", texto)
-    texto = re.sub(r"\\s+", " ", texto)
+    texto = texto.lower()
+    texto = re.sub(r"[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s]", " ", texto)
+    texto = re.sub(r"\s+", " ", texto)
     return texto.strip()
 
 @app.route("/predict", methods=["POST"])
