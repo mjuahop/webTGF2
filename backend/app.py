@@ -8,7 +8,7 @@ from io import BytesIO
 from datetime import datetime
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-app = Flask(_name_)
+app = Flask(__name__)
 CORS(app)
 
 # Modelo en Hugging Face
@@ -163,7 +163,6 @@ def descargar():
         return send_file(CSV_PATH, as_attachment=True)
     else:
         return "No hay historial disponible.", 404
-
 
 if _name_ == "_main_":
     app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
